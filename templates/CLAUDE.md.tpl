@@ -46,3 +46,4 @@ Update progress.json BEFORE committing each sub-task.
 - Format: `type(scope): description` (feat/fix/refactor/test/docs/chore)
 - Do NOT commit to main (you are on a feature branch)
 - Do NOT force push
+- Do NOT commit changes to CLAUDE.md (it contains injected protocol for this worktree only)
