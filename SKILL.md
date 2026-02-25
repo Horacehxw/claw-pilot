@@ -1,11 +1,12 @@
 ---
 name: claw-pilot
 description: >
-  PM/QA skill that manages Claude Code as a background engineer.
-  Plan → Approve → Execute → Validate with git worktree isolation.
-triggers:
-  - /dev
-  - /task
+  Manage Claude Code (CC) as a background engineer for coding tasks.
+  Use for: /dev requests, development tasks, code changes, feature implementation,
+  bug fixes, refactoring, CI fixes. Supports plan review, background execution
+  with git worktree isolation, progress monitoring, test validation, and merge.
+version: 0.1.2
+metadata: {"openclaw": {"emoji": "🧑‍✈️", "requires": {"bins": ["claude", "jq", "git"]}, "os": ["linux", "darwin"]}}
 ---
 
 # Claw Pilot
