@@ -36,12 +36,13 @@ init-task.sh → start-cc.sh (plan) → [agent reviews] → start-cc.sh (bypass,
 
 ```bash
 # Test scripts manually (there is no automated test suite)
-bash scripts/init-task.sh /path/to/project test-task
+bash scripts/init-task.sh /path/to/project test-task "request text"
+bash scripts/init-task.sh --force /path/to/project test-task "retry"  # overwrite existing
 bash scripts/start-cc.sh ~/.openclaw/supervisor/tasks/test-task "What is 2+2?" /tmp plan
 bash scripts/check-cc.sh ~/.openclaw/supervisor/tasks/test-task
 bash scripts/merge-task.sh test-task /path/to/project
 bash scripts/cleanup-task.sh test-task
-bash scripts/list-tasks.sh                              # List all tasks with status/progress
+bash scripts/list-tasks.sh
 
 # Verify CC background execution works on this system
 setsid claude -p "What is 2+2?" --output-format json < /dev/null > /tmp/test.json 2>&1 &

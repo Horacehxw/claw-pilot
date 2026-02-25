@@ -28,7 +28,7 @@ CC runs as a background process. You manage it through shell scripts and file-ba
    ```
    bash scripts/init-task.sh <project-dir> <task-name> "<user request>"
    ```
-   This creates the task directory under ~/.openclaw/supervisor/tasks/, git worktree under ~/.worktrees/, feat/<task-name> branch, .supervisor/ dir in worktree, and task.json with the request text.
+   This auto-detects the current branch of project-dir as the base branch, creates the task directory, git worktree, feat/<task-name> branch, .supervisor/ dir, and task.json (with request text and base_branch). Use `--force` as first arg to overwrite an existing task.
 
 3. Start CC for planning:
    ```
@@ -122,9 +122,9 @@ When CC signals completion (progress.json done=true):
    ```
    (or detect: pytest, make test, cargo test, go test)
 
-2. Get diff summary:
+2. Get diff summary (base_branch is in task.json):
    ```
-   cd <worktree> && git diff main --stat
+   cd <worktree> && git diff $(jq -r '.base_branch // "main"' <task-dir>/task.json) --stat
    ```
 
 3. Optional: if the task involves web UI and browser tool is available, take a screenshot.
@@ -147,7 +147,7 @@ When CC signals completion (progress.json done=true):
 
 When user replies "done":
 
-1. Merge:
+1. Merge (merges into the base branch that was active during init):
    ```
    bash scripts/merge-task.sh <task-name> <project-dir>
    ```
