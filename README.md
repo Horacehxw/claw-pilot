@@ -1,5 +1,8 @@
 # claw-pilot
 
+[![GitHub release](https://img.shields.io/github/v/release/horacehxw/claw-pilot?include_prereleases&style=for-the-badge)](https://github.com/horacehxw/claw-pilot/releases)
+[![MIT License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+[![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-8A2BE2?style=for-the-badge)](https://github.com/openclaw/openclaw)
 > PM/QA skill for [OpenClaw](https://github.com/openclaw/openclaw) that manages [Claude Code](https://docs.anthropic.com/en/docs/claude-code) as a background engineer.
 
 ```
