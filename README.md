@@ -6,7 +6,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-8A2BE2?style=for-the-badge)](https://github.com/openclaw/openclaw)
 
-> PM/QA skill for [OpenClaw](https://github.com/openclaw/openclaw) that manages coding agents as background engineers. Complements [coding-agent](https://github.com/openclaw/openclaw): agent executes, PM manages.
+> PM/QA skill for [OpenClaw](https://github.com/openclaw/openclaw) that manages Claude Code as a background engineer. Complements [coding-agent](https://github.com/openclaw/openclaw): agent executes, PM manages.
 
 **PM** (Project Manager) ensures requirements are covered, process is followed, and results meet quality standards. **QA** (Quality Assurance) validates deliverables through automated tests, functional checks, and visual inspection. coding-pm plays both roles — managing the coding-agent's work from plan to merge, so you don't have to.
 
@@ -19,11 +19,10 @@ You (IM)  →  coding-pm (PM/QA)  →  coding-agent (Engineer, background)
 - **5-phase workflow**: preprocessing → plan review → execution monitoring → acceptance testing → merge & cleanup
 - **Non-blocking**: coding-agent runs in background, your chat stays responsive
 - **PM manages people, not tech**: reviews requirements coverage, process compliance, and result quality — coding-agent owns all technical decisions
-- **Active monitoring**: polls every 30-60s, parses structured markers, pushes progress to you
+- **Event-driven monitoring**: responds to wake events, parses structured markers, pushes progress to you
 - **3-layer acceptance testing**: automated tests + functional integration + screenshot analysis
 - **Git worktree isolation**: each task gets its own branch and worktree
 - **Concurrency**: multiple tasks run simultaneously with independent isolation
-- **Multi-agent support**: Claude Code, Codex, OpenCode, Pi
 - **Human-in-the-loop**: plan approval gate, decision escalation, error retry (up to 3 rounds)
 - **Task lifecycle**: pause, resume, cancel — full control over background tasks
 - **Pure SKILL.md**: zero scripts, uses OpenClaw platform tools
@@ -33,9 +32,7 @@ You (IM)  →  coding-pm (PM/QA)  →  coding-agent (Engineer, background)
 ### Prerequisites
 
 - [OpenClaw](https://github.com/openclaw/openclaw) installed and configured
-- At least one coding agent CLI:
-  - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (`claude auth status`)
-  - [Codex](https://github.com/openai/codex) / [OpenCode](https://github.com/opencode-ai/opencode) / [Pi](https://github.com/anthropics/pi)
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 2.1.0+ (`claude auth status`)
 - `git` installed
 
 ### Install
@@ -104,7 +101,7 @@ Task commands:
 coding-pm/
   SKILL.md                          # PM brain — 5-phase workflow logic
   references/
-    supervisor-prompt.md            # Injected into worktrees as CLAUDE.md
+    supervisor-prompt.md            # Appended to coding-agent system prompt
   CLAUDE.md                         # Developer guide
 ```
 
@@ -116,7 +113,7 @@ No custom scripts. Uses OpenClaw's built-in `bash` (pty/background/workdir) and 
 |-----------|---------|
 | OpenClaw | 2026.2.19+ |
 | git | 2.20+ (worktree support) |
-| Coding agent | Claude Code 2.1.0+ / Codex / OpenCode / Pi |
+| Claude Code | 2.1.0+ |
 
 ## License
 

@@ -25,9 +25,9 @@ Rules:
 - Apply YAGNI: remove anything not directly needed.
 
 ### Test-Driven Development
-- No production code without a failing test first.
-- Cycle: write test -> watch it fail -> write minimal code -> watch it pass -> refactor.
-- If a test passes immediately, the test is wrong — fix it.
+- If the project has an existing test suite, follow TDD: write failing test -> minimal code -> pass -> refactor.
+- If no test framework exists, propose adding one in the plan. If declined, skip TDD but verify behavior manually.
+- If a test passes immediately without new code, the test is wrong — fix it.
 
 ### Systematic Debugging
 - No fixes before root cause investigation.
@@ -58,3 +58,17 @@ Rules:
 - Before deploying to any environment: output `[DECISION_NEEDED] <your question>`
 - Do NOT modify `.env`, `.secrets`, credentials, or key files
 - State your reason when installing new dependencies
+
+## Wake Notifications (MUST follow)
+
+After emitting `[DONE]`, `[ERROR]`, or `[DECISION_NEEDED]`, immediately run:
+```
+openclaw system event --text "task:<marker> <task-name>: <summary>" --mode now
+```
+This wakes the supervisor to process your marker promptly.
+Note: requires HEARTBEAT.md to be non-empty in the OpenClaw workspace (see openclaw/openclaw#14527).
+
+## Worktree Rules
+
+- Stay inside the worktree directory. Do NOT cd to parent repo or other worktrees.
+- Do NOT read or write files under `~/.openclaw/`.

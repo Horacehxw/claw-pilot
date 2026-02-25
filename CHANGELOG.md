@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-02-25
+
+### Fixed
+- **Plan mode hangs**: plan command now uses `--dangerously-skip-permissions --tools "Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git *)"` for safe read-only exploration
+- **CLAUDE.md file pollution**: replaced file injection with `--append-system-prompt-file` CLI flag
+- **Monitoring loop can't execute**: replaced fictional polling loop with event-driven monitoring via `openclaw system event --mode now`
+- **Concurrent state lost on context loss**: `/task list` now reconstructs state from `process action:list` + `git worktree list`
+- **TDD too dogmatic**: TDD is now conditional on existing test framework
+- **.gitignore outdated comment**: updated to reflect current architecture
+
+### Added
+- Wake notification protocol in supervisor-prompt.md (coding-agent notifies PM on key markers)
+- Worktree isolation rules in supervisor-prompt.md (stay inside worktree, don't touch ~/.openclaw/)
+
+### Changed
+- **Claude Code only**: removed multi-agent detection table, all commands use `claude` CLI directly
+- All `claude -p` commands include `--append-system-prompt-file` for supervisor protocol injection
+
 ## [0.3.0] - 2026-02-25
 
 ### Added

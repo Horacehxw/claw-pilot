@@ -6,7 +6,7 @@
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 [![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-8A2BE2?style=for-the-badge)](https://github.com/openclaw/openclaw)
 
-> [OpenClaw](https://github.com/openclaw/openclaw) 的 PM/QA Skill，管理编码 agent 作为后台工程师。与 [coding-agent](https://github.com/openclaw/openclaw) 互补：agent 执行，PM 管理。
+> [OpenClaw](https://github.com/openclaw/openclaw) 的 PM/QA Skill，管理 Claude Code 作为后台工程师。与 [coding-agent](https://github.com/openclaw/openclaw) 互补：agent 执行，PM 管理。
 
 **PM**（Project Manager，项目经理）确保需求被覆盖、流程被遵循、结果达到质量标准。**QA**（Quality Assurance，质量保证）通过自动化测试、功能检查和视觉检查验收交付物。coding-pm 同时扮演这两个角色 — 从方案到合并，全程管理 coding-agent 的工作，你无需亲自操心。
 
@@ -19,11 +19,10 @@
 - **5 阶段工作流**：预处理 → 方案审查 → 执行监控 → 验收测试 → 合并清理
 - **非阻塞**：coding-agent 后台运行，你的对话保持响应
 - **PM 管人不管技术**：审查需求覆盖、流程合规、结果质量 — coding-agent 负责所有技术决策
-- **主动监控**：每 30-60 秒轮询，解析结构化标记，向你推送进度
+- **事件驱动监控**：响应唤醒事件，解析结构化标记，向你推送进度
 - **三层验收测试**：自动化测试 + 功能集成测试 + 截图分析
 - **Git worktree 隔离**：每个任务独立分支和工作树
 - **并发支持**：多个任务同时运行，互相独立隔离
-- **多 Agent 支持**：Claude Code、Codex、OpenCode、Pi
 - **人在回路**：方案审批门、决策上报、错误重试（最多 3 轮）
 - **任务生命周期**：暂停、恢复、取消 — 完全掌控后台任务
 - **纯 SKILL.md**：零脚本，使用 OpenClaw 平台工具
@@ -33,9 +32,7 @@
 ### 前置条件
 
 - [OpenClaw](https://github.com/openclaw/openclaw) 已安装配置
-- 至少一个编码 agent CLI：
-  - [Claude Code](https://docs.anthropic.com/en/docs/claude-code)（`claude auth status`）
-  - [Codex](https://github.com/openai/codex) / [OpenCode](https://github.com/opencode-ai/opencode) / [Pi](https://github.com/anthropics/pi)
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 2.1.0+（`claude auth status`）
 - 已安装 `git`
 
 ### 安装
@@ -104,7 +101,7 @@ Agent 会：
 coding-pm/
   SKILL.md                          # PM 大脑 — 5 阶段工作流逻辑
   references/
-    supervisor-prompt.md            # 注入 worktree 作为 CLAUDE.md
+    supervisor-prompt.md            # 追加到 coding-agent 系统提示
   CLAUDE.md                         # 开发指南
 ```
 
@@ -116,7 +113,7 @@ coding-pm/
 |------|------|
 | OpenClaw | 2026.2.19+ |
 | git | 2.20+（worktree 支持） |
-| 编码 agent | Claude Code 2.1.0+ / Codex / OpenCode / Pi |
+| Claude Code | 2.1.0+ |
 
 ## 许可证
 

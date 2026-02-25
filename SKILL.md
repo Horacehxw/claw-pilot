@@ -4,8 +4,8 @@ description: >
   PM/QA skill for coding agents. Reviews plans, gates approval, validates tests,
   and reports structured results. Use for /dev requests that need oversight.
   Complements coding-agent: agent executes, PM manages.
-version: 0.3.0
-metadata: {"openclaw": {"emoji": "🧑‍💼", "requires": {"anyBins": ["claude", "codex", "opencode", "pi"], "bins": ["git"]}, "os": ["linux", "darwin"]}}
+version: 0.3.1
+metadata: {"openclaw": {"emoji": "🧑‍💼", "requires": {"bins": ["git", "claude"]}, "os": ["linux", "darwin"]}}
 ---
 
 # Coding PM
@@ -18,24 +18,10 @@ QA validates deliverables through automated tests, functional checks, and visual
 Your job: ensure the coding-agent's work covers requirements, follows process, and meets quality standards.
 You do NOT make technical decisions — the coding-agent is a full-stack engineer.
 
-## Agent Detection
+## Coding Agent
 
-Detect which coding agent is available (in priority order):
-1. `claude` -> Claude Code
-2. `codex` -> Codex CLI
-3. `opencode` -> OpenCode
-4. `pi` -> Pi
-
-Store the detected agent name as `$AGENT` for all subsequent commands.
-
-Agent-specific command formats:
-
-| Agent | Plan command | Execute command | Resume |
-|-------|-------------|-----------------|--------|
-| claude | `claude -p "<prompt>" --output-format json` | `claude -p "<prompt>" --output-format json --dangerously-skip-permissions` | `--resume <sid>` |
-| codex | `codex -q "<prompt>"` | `codex -q --full-auto "<prompt>"` | N/A (new session) |
-| opencode | `opencode -m "<prompt>"` | `opencode -m "<prompt>"` | N/A |
-| pi | `pi "<prompt>"` | `pi "<prompt>"` | N/A |
+This skill uses **Claude Code** (`claude` CLI) as the coding agent.
+Prerequisite: `claude` must be installed and authenticated (`claude auth status`).
 
 ## Important Rules
 
@@ -78,33 +64,24 @@ TASK=<task-name>  # 2-3 words, kebab-case, from request
 git -C <project-dir> worktree add ~/.worktrees/$TASK -b feat/$TASK
 ```
 
-### 3. Inject supervisor prompt
-
-Read the supervisor prompt template from this skill's references directory and write it into the worktree:
-
-```bash
-cat ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md > ~/.worktrees/$TASK/CLAUDE.md
-```
-
-If the project already has a CLAUDE.md, append the supervisor prompt:
-```bash
-cat ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md >> ~/.worktrees/$TASK/CLAUDE.md
-```
-
-### 4. Start coding-agent for planning
+### 3. Start coding-agent for planning
 
 Compose a structured prompt with project context:
 
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
-command: $AGENT -p "Context: <project type, language, framework, key directories, relevant files>
+command: claude -p "Context: <project type, language, framework, key directories, relevant files>
 Request: <user's original request>
 Instructions:
 - Research the codebase and relevant best practices
-- Design the architecture following the Engineering Practices in CLAUDE.md
+- Design the architecture following the Engineering Practices in your system prompt
 - Produce a detailed implementation plan with test strategy
 - Wrap plan in [PLAN_START] and [PLAN_END]
-- Do NOT execute yet" --output-format json
+- Do NOT execute yet" \
+  --output-format json \
+  --dangerously-skip-permissions \
+  --tools "Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git *)" \
+  --append-system-prompt-file ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md
 ```
 
 Remember the **sessionId** returned by the bash tool.
@@ -132,7 +109,12 @@ When the coding-agent's plan is ready (poll shows completed, output contains `[P
 
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
-command: $AGENT -p "Update your plan: <specific issues>" --output-format json --resume <sessionId>
+command: claude -p "Update your plan: <specific issues>" \
+  --output-format json \
+  --dangerously-skip-permissions \
+  --tools "Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git *)" \
+  --append-system-prompt-file ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md \
+  --resume <sessionId>
 ```
 
 ### Plan looks good -> present to user
@@ -153,7 +135,12 @@ Do NOT rewrite or interpret user feedback. Pass it through exactly:
 
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
-command: $AGENT -p "User feedback on your plan: <user's exact words>. Update accordingly." --output-format json --resume <sessionId>
+command: claude -p "User feedback on your plan: <user's exact words>. Update accordingly." \
+  --output-format json \
+  --dangerously-skip-permissions \
+  --tools "Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git *)" \
+  --append-system-prompt-file ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md \
+  --resume <sessionId>
 ```
 
 ---
@@ -164,28 +151,28 @@ command: $AGENT -p "User feedback on your plan: <user's exact words>. Update acc
 
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
-command: $AGENT -p "Execute the approved plan. Follow the Supervisor Protocol in CLAUDE.md. Emit [CHECKPOINT] after each sub-task." --output-format json --dangerously-skip-permissions --resume <sessionId>
+command: claude -p "Execute the approved plan. Follow the Supervisor Protocol. Emit [CHECKPOINT] after each sub-task." \
+  --output-format json \
+  --dangerously-skip-permissions \
+  --append-system-prompt-file ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md \
+  --resume <sessionId>
 ```
 
-### 2. Active monitoring loop
+### 2. Event-driven monitoring
 
-Run this loop every 30-60 seconds until the task completes or fails:
+The coding-agent sends wake events via `openclaw system event` on key markers
+([DONE], [ERROR], [DECISION_NEEDED]). You respond to:
 
-```
-Loop:
-  1. process action:poll id:<sessionId> -> check if coding-agent still running
-  2. process action:log id:<sessionId> -> read new output
-  3. git -C ~/.worktrees/$TASK log feat/$TASK --oneline -10 -> check commits
-  4. Parse markers in output:
-     [CHECKPOINT] -> push summary to user
-     [DECISION_NEEDED] -> forward question to user, wait for answer, relay via:
-       process action:write id:<sessionId> content:"<user's answer>"
-     [ERROR] -> enter error retry (see below)
-     [DONE] -> enter Phase 4 (Acceptance Testing)
-  5. Dangerous pattern scan -> alert user immediately
-  6. No progress for extended time -> send nudge via:
-       process action:write id:<sessionId> content:"Status check: what are you working on?"
-```
+- **Wake events** -> read log, parse marker, take immediate action
+- **User messages** (/task status, etc.) -> check and respond
+- **Heartbeats** -> poll all active tasks, check git log for new commits
+
+On each check:
+1. `process action:poll id:<sessionId>` -> running?
+2. `process action:log id:<sessionId>` -> read new output
+3. `git -C ~/.worktrees/$TASK log feat/$TASK --oneline -10` -> check commits
+4. Parse markers: `[CHECKPOINT]` -> push summary, `[DECISION_NEEDED]` -> forward to user, `[ERROR]` -> retry, `[DONE]` -> Phase 4
+5. Dangerous pattern scan -> alert user
 
 ### 3. Error retry protocol
 
@@ -195,7 +182,11 @@ When coding-agent reports `[ERROR]`:
 
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
-command: $AGENT -p "Error encountered: <error description>. Please investigate and fix." --output-format json --dangerously-skip-permissions --resume <sessionId>
+command: claude -p "Error encountered: <error description>. Please investigate and fix." \
+  --output-format json \
+  --dangerously-skip-permissions \
+  --append-system-prompt-file ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md \
+  --resume <sessionId>
 ```
 
 ### 4. Nested plans
@@ -255,7 +246,11 @@ Send failure output to coding-agent for fixing. Retry up to 3 rounds:
 
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
-command: $AGENT -p "Tests failed. Fix these issues: <test output>" --output-format json --dangerously-skip-permissions --resume <sessionId>
+command: claude -p "Tests failed. Fix these issues: <test output>" \
+  --output-format json \
+  --dangerously-skip-permissions \
+  --append-system-prompt-file ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md \
+  --resume <sessionId>
 ```
 
 After 3 failed rounds -> escalate to user with full context.
@@ -313,7 +308,10 @@ Multiple tasks can run simultaneously. Each task is fully independent:
 - Own feature branch `feat/<task-name>`
 - Own phase tracking (preprocessing / planning / executing / testing / merging)
 
-The monitoring loop polls ALL active tasks. Each task's progress is pushed independently to the user without blocking other tasks.
+To recover task state (e.g., after context loss), reconstruct from:
+- `process action:list` -> active coding-agent sessions
+- `git worktree list` -> active worktrees and their branches
+Do not rely solely on conversation memory for task tracking.
 
 When reporting, prefix with task name so the user can distinguish:
 
@@ -326,7 +324,7 @@ When reporting, prefix with task name so the user can distinguish:
 
 ## Task Commands
 
-`/task list` — List all tasks via `process action:list`. Show each task's name, phase, and status.
+`/task list` — Reconstruct task state from `process action:list` + `git worktree list`. Show each task's name, phase, and status.
 
 `/task status <name>` — Poll + read log for the task. Show full details including recent checkpoints.
 

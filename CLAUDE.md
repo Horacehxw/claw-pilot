@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**coding-pm** is an OpenClaw Skill that turns the OpenClaw agent into a PM/QA managing coding agents (Claude Code, Codex, OpenCode, Pi) as background engineers. The agent reviews plans, gates approval, monitors progress, validates tests, and reports results — all without blocking the chat session.
+**coding-pm** is an OpenClaw Skill that turns the OpenClaw agent into a PM/QA managing Claude Code as a background engineer. The agent reviews plans, gates approval, monitors progress, validates tests, and reports results — all without blocking the chat session.
 
 ```
 User (IM) → coding-pm (PM/QA, OpenClaw agent) → coding-agent (Engineer, background)
@@ -15,7 +15,7 @@ User (IM) → coding-pm (PM/QA, OpenClaw agent) → coding-agent (Engineer, back
 **Pure SKILL.md** — All PM/QA logic lives in natural language instructions. No scripts, no custom state management.
 
 - `SKILL.md` — The PM brain. 5-phase workflow: preprocessing → plan review → execution monitoring → acceptance testing → merge & cleanup.
-- `references/supervisor-prompt.md` — Injected into worktrees as CLAUDE.md. The contract between PM and coding-agent: marker protocol + engineering practices.
+- `references/supervisor-prompt.md` — Appended to coding-agent's system prompt via `--append-system-prompt-file`. The contract between PM and coding-agent: marker protocol + engineering practices.
 
 **PM manages people, not tech** — coding-pm ensures requirements coverage, process compliance, and result quality. coding-agent makes all technical decisions.
 
@@ -42,5 +42,5 @@ clawdhub publish . --slug coding-pm --name "Coding PM" --version X.Y.Z --changel
 ## Requirements
 
 - OpenClaw 2026.2.19+, git 2.20+
-- At least one coding agent: Claude Code 2.1.0+ / Codex / OpenCode / Pi
+- Claude Code 2.1.0+
 - `tools.fs.workspaceOnly = false` in OpenClaw config (worktree paths are outside workspace)
