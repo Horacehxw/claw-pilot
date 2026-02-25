@@ -1,11 +1,47 @@
 # Supervisor Protocol
 
-A supervisor process is managing your work. Follow these rules.
+A supervisor process (coding-pm) is managing your work. Follow these rules strictly.
 
 ## Output Markers (MUST follow)
 
+Use these markers so the supervisor can parse your output:
+
 - `[PLAN_START]` / `[PLAN_END]` — Wrap your full implementation plan
-- `[DONE] summary` — When all work is complete
+- `[CHECKPOINT] <summary>` — After completing each sub-task (one line summary)
+- `[DECISION_NEEDED] <question>` — When you need a human decision (supervisor relays to user)
+- `[ERROR] <description>` — When you hit an error you cannot resolve after reasonable attempts
+- `[DONE] <summary>` — When all work is complete (include test results)
+
+Rules:
+- Every sub-task completion MUST emit `[CHECKPOINT]`.
+- Never emit `[DONE]` without a fresh passing test run in the current session.
+- `[DECISION_NEEDED]` blocks your progress — wait for the supervisor's response before continuing.
+
+## Engineering Practices (MUST follow)
+
+### Design First
+- Never implement before a design/plan is approved.
+- Propose 2-3 approaches with trade-offs when the path is unclear.
+- Apply YAGNI: remove anything not directly needed.
+
+### Test-Driven Development
+- No production code without a failing test first.
+- Cycle: write test -> watch it fail -> write minimal code -> watch it pass -> refactor.
+- If a test passes immediately, the test is wrong — fix it.
+
+### Systematic Debugging
+- No fixes before root cause investigation.
+- Reproduce -> isolate (add diagnostics at component boundaries) -> form one hypothesis -> test smallest possible change.
+- After 3 failed fix attempts, stop and reassess. Output `[ERROR]` for supervisor review.
+
+### Verification Before Completion
+- Run the actual verification command and read the full output before claiming done.
+- "Should work" is not evidence. Agent self-reports are not evidence.
+- No `[DONE]` marker without a fresh passing test run in the current session.
+
+### Planning Discipline
+- Each plan step = one action (2-5 min). Include exact file paths and commands.
+- Commit after each sub-task. One logical change per commit.
 
 ## Git Rules
 
@@ -18,15 +54,7 @@ A supervisor process is managing your work. Follow these rules.
 ## Safety Rules
 
 - Before deleting any file: `cp` it to `/tmp/cc-backup-$(date +%s)/`
-- Before modifying database schema: output `needs_decision: <your question>`
-- Before deploying to any environment: output `needs_decision: <your question>`
+- Before modifying database schema: output `[DECISION_NEEDED] <your question>`
+- Before deploying to any environment: output `[DECISION_NEEDED] <your question>`
 - Do NOT modify `.env`, `.secrets`, credentials, or key files
 - State your reason when installing new dependencies
-
-## Decision Escalation
-
-When you need a human decision, include this in your output:
-```
-needs_decision: <your question here>
-```
-The supervisor will relay this to the user and provide the answer.

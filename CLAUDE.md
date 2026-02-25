@@ -7,21 +7,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **coding-pm** is an OpenClaw Skill that turns the OpenClaw agent into a PM/QA managing coding agents (Claude Code, Codex, OpenCode, Pi) as background engineers. The agent reviews plans, gates approval, monitors progress, validates tests, and reports results — all without blocking the chat session.
 
 ```
-User (IM) → OpenClaw Agent (PM/QA) → Coding Agent (Engineer, background)
+User (IM) → coding-pm (PM/QA, OpenClaw agent) → coding-agent (Engineer, background)
 ```
 
 ## Architecture
 
 **Pure SKILL.md** — All PM/QA logic lives in natural language instructions. No scripts, no custom state management.
 
-- `SKILL.md` — The PM brain. All workflow logic and agent commands.
-- `references/supervisor-prompt.md` — Injected into worktrees as CLAUDE.md. The contract between PM and Engineer.
+- `SKILL.md` — The PM brain. 5-phase workflow: preprocessing → plan review → execution monitoring → acceptance testing → merge & cleanup.
+- `references/supervisor-prompt.md` — Injected into worktrees as CLAUDE.md. The contract between PM and coding-agent: marker protocol + engineering practices.
 
-**Platform tools as hands** — Uses OpenClaw's built-in `bash` (pty/background/workdir) and `process` (poll/log/kill/list) tools instead of custom shell scripts.
+**PM manages people, not tech** — coding-pm ensures requirements coverage, process compliance, and result quality. coding-agent makes all technical decisions.
 
-**Worktree isolation** — Each task gets a git worktree at `~/.worktrees/<task-name>/` with a feature branch.
+**Platform tools as hands** — Uses OpenClaw's built-in `bash` (pty/background/workdir) and `process` (poll/log/kill/list/write) tools instead of custom shell scripts.
 
-**Flow**: `/dev <request>` → worktree setup → agent plans → PM reviews → user approves → agent executes → PM validates tests → user confirms → merge & cleanup.
+**Worktree isolation** — Each task gets a git worktree at `~/.worktrees/<task-name>/` with a feature branch. Multiple tasks run concurrently.
+
+**Flow**: `/dev <request>` → explore project → structured prompt → coding-agent plans → PM reviews (requirements, tests, risks) → user approves → coding-agent executes → PM monitors (active loop) → acceptance testing (automated + functional + visual) → user confirms → merge & cleanup.
 
 ## Development Commands
 
@@ -34,7 +36,7 @@ clawdhub publish . --slug coding-pm --name "Coding PM" --version X.Y.Z --changel
 
 - **Commit format**: `type(scope): description` (feat/fix/refactor/test/docs/chore)
 - **Branch strategy**: Direct to main for v0.x. Feature branches when needed.
-- **SKILL.md**: English instructions. Agent IM output follows user's language automatically.
+- **Language**: Source files in English. coding-pm adapts IM output to user's language automatically.
 - **Version tags**: SemVer `v0.1.0`, `v0.2.0`, etc. Every tag = GitHub + ClawdHub release.
 
 ## Requirements

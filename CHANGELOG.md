@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-25
+
+### Added
+- **5-phase workflow**: preprocessing, plan review, execution monitoring, acceptance testing, merge & cleanup
+- **Phase 1 Preprocessing**: PM explores project context, composes structured prompt for coding-agent
+- **Active monitoring loop**: polls every 30-60s, parses markers, pushes progress to user
+- **Structured markers**: `[CHECKPOINT]`, `[DECISION_NEEDED]`, `[ERROR]` (in addition to existing `[PLAN_START/END]`, `[DONE]`)
+- **PM-to-agent communication**: `process action:write` to send corrections/answers mid-execution
+- **3-layer acceptance testing**: automated tests, functional integration tests, screenshot analysis
+- **Error retry protocol**: auto-retry up to 3 rounds before escalating to user
+- **Concurrency management**: multiple independent tasks with per-task worktree, session, and phase tracking
+- **Task commands**: `/task pause`, `/task resume`, `/task progress`, `/task plan`
+- **Engineering Practices** in supervisor-prompt.md: Design First, TDD, Systematic Debugging, Verification Before Completion, Planning Discipline
+
+### Changed
+- **PM role deepened**: from dispatcher to real project manager (requirements coverage, process compliance, result quality)
+- **Plan review**: PM checks requirements coverage, test plan, risks, format — no technical opinions
+- **User feedback**: relayed verbatim to coding-agent (PM does not rewrite)
+- **Terminology**: unified to `coding-agent` throughout
+- **Language rule**: source files in English, IM output adapts to user's language
+
 ## [0.2.0] - 2026-02-25
 
 ### Changed
