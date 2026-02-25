@@ -54,6 +54,18 @@ openclaw config set tools.fs.workspaceOnly false
 openclaw gateway restart
 ```
 
+### Security
+
+This skill requires `tools.fs.workspaceOnly = false`, which allows the agent to read and write files anywhere on the filesystem. During execution, Claude Code runs with `--dangerously-skip-permissions` and has full tool access.
+
+Mitigations:
+- Plan phase restricts CC to read-only tools via `--allowedTools`
+- Supervisor Protocol requires CC to ask before deleting files or modifying credentials
+- The PM agent scans for dangerous patterns (rm -rf, DROP TABLE, etc.)
+- `exec-approvals.json` allowlist controls which shell commands are auto-approved
+
+**Recommendation**: Review the Supervisor Protocol in `references/supervisor-prompt.md` before use. Run on non-production codebases first.
+
 ### Usage
 
 In your IM (Feishu/Slack/etc.):

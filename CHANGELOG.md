@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-25
+
+### Fixed
+- **BUG-1**: `--tools` → `--allowedTools` (Claude Code CLI flag name fix)
+- **BUG-2**: Step numbering in Phase 1 (5 → 4)
+- **FIX-1**: Skill path hardcoding — added dynamic discovery with `find ~/.openclaw -path "*/coding-pm/references/supervisor-prompt.md"`
+- **FIX-2**: `[DECISION_NEEDED]` flow now uses `--resume` instead of `process action:write`
+- **FIX-3**: Mixed output format — execution phases use text mode (no `--output-format json`) for real-time monitoring
+
+### Added
+- **IMP-1**: Tightened git permissions in plan phase (`Bash(git log *,git diff *,git show *,git status,git branch --list *)`)
+- **IMP-2**: Wake event fallback — create `.supervisor/wake-marker` if `openclaw system event` fails
+- **IMP-3**: Security warnings in README.md and README_zh.md
+- **IMP-4**: Auto-create `.supervisor/` directory in worktree for marker file fallback
+
+### Changed
+- All execution/resume commands now use plain text output (removed `--output-format json`)
+- Supervisor protocol updated: CC exits on `[DECISION_NEEDED]`, PM resumes with answer
+
 ## [0.3.1] - 2026-02-25
 
 ### Fixed

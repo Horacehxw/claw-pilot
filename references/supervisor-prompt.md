@@ -15,7 +15,7 @@ Use these markers so the supervisor can parse your output:
 Rules:
 - Every sub-task completion MUST emit `[CHECKPOINT]`.
 - Never emit `[DONE]` without a fresh passing test run in the current session.
-- `[DECISION_NEEDED]` blocks your progress — wait for the supervisor's response before continuing.
+- `[DECISION_NEEDED]` — Output the marker and stop working on the blocked item. You may continue with other non-blocked sub-tasks if they are independent, or exit if everything is blocked. The supervisor will resume you with the answer.
 
 ## Engineering Practices (MUST follow)
 
@@ -67,6 +67,12 @@ openclaw system event --text "task:<marker> <task-name>: <summary>" --mode now
 ```
 This wakes the supervisor to process your marker promptly.
 Note: requires HEARTBEAT.md to be non-empty in the OpenClaw workspace (see openclaw/openclaw#14527).
+
+**Fallback**: If `openclaw system event` fails (command not found or error), create a marker file:
+```
+echo "<marker>:<task-name>:<summary>" > .supervisor/wake-marker
+```
+The supervisor checks this file during heartbeats.
 
 ## Worktree Rules
 

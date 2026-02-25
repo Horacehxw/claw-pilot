@@ -54,6 +54,18 @@ openclaw config set tools.fs.workspaceOnly false
 openclaw gateway restart
 ```
 
+### 安全说明
+
+本 skill 需要 `tools.fs.workspaceOnly = false`，这允许 agent 读写文件系统中任何位置的文件。执行期间，Claude Code 以 `--dangerously-skip-permissions` 运行，拥有完整的工具访问权限。
+
+缓解措施：
+- Plan 阶段通过 `--allowedTools` 将 CC 限制为只读工具
+- Supervisor Protocol 要求 CC 在删除文件或修改凭证前必须询问
+- PM agent 会扫描危险模式（rm -rf、DROP TABLE 等）
+- `exec-approvals.json` 白名单控制哪些 shell 命令可自动批准
+
+**建议**：使用前请查阅 `references/supervisor-prompt.md` 中的 Supervisor Protocol。首次使用请在非生产代码库上运行。
+
 ### 使用
 
 在 IM（飞书/Slack 等）中：

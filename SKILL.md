@@ -37,6 +37,18 @@ Prerequisite: `claude` must be installed and authenticated (`claude auth status`
 
 ---
 
+## Skill Directory Discovery
+
+Before starting any task, locate the supervisor prompt dynamically (supports clawdhub install to custom paths):
+
+```bash
+SUPERVISOR_PROMPT=$(find ~/.openclaw -path "*/coding-pm/references/supervisor-prompt.md" -print -quit 2>/dev/null)
+```
+
+Use `$SUPERVISOR_PROMPT` in all subsequent `--append-system-prompt-file` arguments. If not found, fall back to `~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md`.
+
+---
+
 ## Phase 1: Preprocessing (/dev <request>)
 
 When a user sends `/dev <request>`:
@@ -62,6 +74,9 @@ BASE=$(git -C <project-dir> rev-parse --abbrev-ref HEAD)
 # Create worktree
 TASK=<task-name>  # 2-3 words, kebab-case, from request
 git -C <project-dir> worktree add ~/.worktrees/$TASK -b feat/$TASK
+
+# Create supervisor directory for wake markers
+mkdir -p ~/.worktrees/$TASK/.supervisor
 ```
 
 ### 3. Start coding-agent for planning
@@ -80,13 +95,13 @@ Instructions:
 - Do NOT execute yet" \
   --output-format json \
   --dangerously-skip-permissions \
-  --tools "Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git *)" \
-  --append-system-prompt-file ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md
+  --allowedTools "Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git log *,git diff *,git show *,git status,git branch --list *)" \
+  --append-system-prompt-file "$SUPERVISOR_PROMPT"
 ```
 
 Remember the **sessionId** returned by the bash tool.
 
-### 5. Notify user
+### 4. Notify user
 
 Tell the user: "Task **$TASK** started. Coding-agent is researching and producing a plan..."
 
@@ -112,8 +127,8 @@ bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "Update your plan: <specific issues>" \
   --output-format json \
   --dangerously-skip-permissions \
-  --tools "Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git *)" \
-  --append-system-prompt-file ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md \
+  --allowedTools "Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git log *,git diff *,git show *,git status,git branch --list *)" \
+  --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
 ```
 
@@ -138,8 +153,8 @@ bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "User feedback on your plan: <user's exact words>. Update accordingly." \
   --output-format json \
   --dangerously-skip-permissions \
-  --tools "Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git *)" \
-  --append-system-prompt-file ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md \
+  --allowedTools "Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git log *,git diff *,git show *,git status,git branch --list *)" \
+  --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
 ```
 
@@ -152,9 +167,8 @@ command: claude -p "User feedback on your plan: <user's exact words>. Update acc
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "Execute the approved plan. Follow the Supervisor Protocol. Emit [CHECKPOINT] after each sub-task." \
-  --output-format json \
   --dangerously-skip-permissions \
-  --append-system-prompt-file ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md \
+  --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
 ```
 
@@ -171,8 +185,28 @@ On each check:
 1. `process action:poll id:<sessionId>` -> running?
 2. `process action:log id:<sessionId>` -> read new output
 3. `git -C ~/.worktrees/$TASK log feat/$TASK --oneline -10` -> check commits
-4. Parse markers: `[CHECKPOINT]` -> push summary, `[DECISION_NEEDED]` -> forward to user, `[ERROR]` -> retry, `[DONE]` -> Phase 4
+4. Parse markers:
+   - `[CHECKPOINT]` -> push summary
+   - `[DECISION_NEEDED]` -> forward question to user, wait for answer, then resume with answer (see below)
+   - `[ERROR]` -> retry
+   - `[DONE]` -> Phase 4
 5. Dangerous pattern scan -> alert user
+
+### Handling `[DECISION_NEEDED]`
+
+When the coding-agent emits `[DECISION_NEEDED] <question>`:
+
+1. **Forward to user**: Send the question verbatim to the user
+2. **Wait for response**: The coding-agent has exited or paused; no process action needed
+3. **Resume with answer**: When user replies, start a new CC session with the answer:
+
+```
+bash pty:true workdir:~/.worktrees/$TASK background:true
+command: claude -p "The user answered your question: <user's answer>. Continue with the plan." \
+  --dangerously-skip-permissions \
+  --append-system-prompt-file "$SUPERVISOR_PROMPT" \
+  --resume <sessionId>
+```
 
 ### 3. Error retry protocol
 
@@ -183,9 +217,8 @@ When coding-agent reports `[ERROR]`:
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "Error encountered: <error description>. Please investigate and fix." \
-  --output-format json \
   --dangerously-skip-permissions \
-  --append-system-prompt-file ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md \
+  --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
 ```
 
@@ -247,9 +280,8 @@ Send failure output to coding-agent for fixing. Retry up to 3 rounds:
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "Tests failed. Fix these issues: <test output>" \
-  --output-format json \
   --dangerously-skip-permissions \
-  --append-system-prompt-file ~/.openclaw/workspace/skills/coding-pm/references/supervisor-prompt.md \
+  --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
 ```
 
