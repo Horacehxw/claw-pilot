@@ -4,7 +4,7 @@ description: >
   PM/QA skill for coding agents. Reviews plans, gates approval, validates tests,
   and reports structured results. Use for /dev requests that need oversight.
   Complements coding-agent: agent executes, PM manages.
-version: 0.3.1
+version: 0.4.0
 metadata: {"openclaw": {"emoji": "🧑‍💼", "requires": {"bins": ["git", "claude"]}, "os": ["linux", "darwin"]}}
 ---
 
