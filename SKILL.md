@@ -32,8 +32,66 @@ Prerequisite: `claude` must be installed and authenticated (`claude auth status`
 - All source files (SKILL.md, supervisor-prompt.md) are in English.
 - When communicating with users via IM (progress updates, reports, approval requests), match the user's language automatically.
 - Prompts sent to the coding-agent are always in English.
-- Store task context (sessionId, base branch, worktree path, phase) in your conversation memory.
 - When the coding-agent finishes, notify the user proactively.
+
+---
+
+## Task Registry
+
+All task state is persisted in `~/.coding-pm/tasks.json`. This file survives context loss — always read it on startup and update it at each phase transition.
+
+```bash
+# Initialize on first use
+mkdir -p ~/.coding-pm
+[ -f ~/.coding-pm/tasks.json ] || echo '{}' > ~/.coding-pm/tasks.json
+```
+
+Schema — each key is the task name:
+```json
+{
+  "cli-todo": {
+    "projectDir": "/home/user/Projects/cli-todo",
+    "worktree": "/home/user/.worktrees/cli-todo",
+    "branch": "feat/cli-todo",
+    "baseBranch": "main",
+    "sessionId": "abc-123",
+    "phase": "executing",
+    "createdAt": "2026-02-27T12:00:00Z"
+  }
+}
+```
+
+**Read/write with python3** (available on all supported platforms):
+```bash
+# Read all tasks
+python3 -c "import json; print(json.dumps(json.load(open('$HOME/.coding-pm/tasks.json')), indent=2))"
+
+# Update a task field
+python3 -c "
+import json, sys
+f = '$HOME/.coding-pm/tasks.json'
+tasks = json.load(open(f))
+tasks.setdefault('$TASK', {})['phase'] = 'executing'
+json.dump(tasks, open(f, 'w'), indent=2)
+"
+
+# Remove a task
+python3 -c "
+import json
+f = '$HOME/.coding-pm/tasks.json'
+tasks = json.load(open(f))
+tasks.pop('$TASK', None)
+json.dump(tasks, open(f, 'w'), indent=2)
+"
+```
+
+**When to update:**
+- Phase 1 (preprocessing): create entry with projectDir, worktree, branch, baseBranch, phase="planning"
+- Phase 2 (plan approved): update phase="executing", sessionId
+- Phase 3 (execution): update phase on checkpoints if needed
+- Phase 4 (testing): update phase="testing"
+- Phase 5 (merge): remove entry after cleanup
+- `/task cancel`: remove entry after cleanup
 
 ---
 
@@ -340,6 +398,8 @@ git -C <project-dir> worktree remove ~/.worktrees/$TASK
 git -C <project-dir> branch -d feat/$TASK
 ```
 
+Remove the task from the registry (`~/.coding-pm/tasks.json`).
+
 ### 3. Confirm
 
 Tell user: "**$TASK** merged and cleaned up."
@@ -355,10 +415,10 @@ Multiple tasks can run simultaneously. Each task is fully independent:
 - Own feature branch `feat/<task-name>`
 - Own phase tracking (preprocessing / planning / executing / testing / merging)
 
-To recover task state (e.g., after context loss), reconstruct from:
-- `process action:list` -> active coding-agent sessions
-- `git worktree list` -> active worktrees and their branches
-Do not rely solely on conversation memory for task tracking.
+Task state is persisted in `~/.coding-pm/tasks.json` (see Task Registry section). On startup or after context loss:
+1. Read `~/.coding-pm/tasks.json` for all task metadata (projectDir, phase, sessionId)
+2. Cross-check with `process action:list` (active sessions) and `git worktree list` (active worktrees)
+3. Reconcile: remove registry entries for tasks whose worktrees no longer exist
 
 When reporting, prefix with task name so the user can distinguish:
 
@@ -399,11 +459,11 @@ This skill requires two platform-level changes to function:
 
 ## Task Commands
 
-`/task list` — Reconstruct task state from `process action:list` + `git worktree list`. Show each task's name, phase, and status.
+`/task list` — Read `~/.coding-pm/tasks.json`. Cross-check with `process action:list` + `git worktree list`. Show each task's name, project, phase, and status.
 
-`/task status <name>` — Poll + read log for the task. Show full details including recent checkpoints.
+`/task status <name>` — Read task from registry, poll + read log. Show full details including project dir and recent checkpoints.
 
-`/task cancel <name>` — Kill coding-agent process via `process action:kill id:<sessionId>`. Clean up worktree:
+`/task cancel <name>` — Kill coding-agent process via `process action:kill id:<sessionId>`. Clean up worktree and remove from registry:
 ```bash
 git -C <project-dir> worktree remove ~/.worktrees/$TASK
 git -C <project-dir> branch -D feat/$TASK
@@ -411,9 +471,9 @@ git -C <project-dir> branch -D feat/$TASK
 
 `/task approve <name>` — Same as user replying "ok" to a pending plan.
 
-`/task pause <name>` — Kill coding-agent process via `process action:kill id:<sessionId>`. Preserve worktree, branch, and sessionId. Record current phase.
+`/task pause <name>` — Kill coding-agent process via `process action:kill id:<sessionId>`. Update registry phase to "paused". Preserve worktree, branch, and sessionId.
 
-`/task resume <name>` — Restart coding-agent with `--resume <sessionId>` to continue from where it left off. Session context is preserved.
+`/task resume <name>` — Read sessionId from registry. Restart coding-agent with `--resume <sessionId>` to continue from where it left off. Update registry phase.
 
 `/task progress <name>` — Show recent `[CHECKPOINT]` markers and current step for the task.
 
