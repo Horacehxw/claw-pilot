@@ -61,29 +61,11 @@ Schema — each key is the task name:
 }
 ```
 
-**Read/write with python3** (available on all supported platforms):
-```bash
-# Read all tasks
-python3 -c "import json; print(json.dumps(json.load(open('$HOME/.coding-pm/tasks.json')), indent=2))"
+**Read/write:** Use OpenClaw's file tools directly — read the file, parse the JSON in-context, write the updated JSON back. No external dependencies needed (the PM is an LLM and handles JSON natively).
 
-# Update a task field
-python3 -c "
-import json, sys
-f = '$HOME/.coding-pm/tasks.json'
-tasks = json.load(open(f))
-tasks.setdefault('$TASK', {})['phase'] = 'executing'
-json.dump(tasks, open(f, 'w'), indent=2)
-"
-
-# Remove a task
-python3 -c "
-import json
-f = '$HOME/.coding-pm/tasks.json'
-tasks = json.load(open(f))
-tasks.pop('$TASK', None)
-json.dump(tasks, open(f, 'w'), indent=2)
-"
-```
+- **Read**: Read `~/.coding-pm/tasks.json` with the platform's file read tool
+- **Write**: After updating the JSON in-context, write the full file back with the platform's file write tool
+- **Initialize**: Use `bash` only for `mkdir -p ~/.coding-pm` on first use
 
 **When to update:**
 - Phase 1 (preprocessing): create entry with projectDir, worktree, branch, baseBranch, phase="planning"
