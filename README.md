@@ -56,13 +56,23 @@ openclaw gateway restart
 
 ### Security
 
-This skill requires `tools.fs.workspaceOnly = false`, which allows the agent to read and write files anywhere on the filesystem. During execution, Claude Code runs with `--dangerously-skip-permissions` and has full tool access.
+coding-pm uses a **3-tier permission model** to minimize risk at each phase:
 
-Mitigations:
-- Plan phase restricts CC to read-only tools via `--allowedTools`
-- Supervisor Protocol requires CC to ask before deleting files or modifying credentials
-- The PM agent scans for dangerous patterns (rm -rf, DROP TABLE, etc.)
-- `exec-approvals.json` allowlist controls which shell commands are auto-approved
+| Phase | Permissions | What the agent can do |
+|-------|------------|----------------------|
+| Planning (Phase 1-2) | Read-only tools via `--allowedTools` | Research codebase, read files, search — no writes |
+| Execution (Phase 3) | Full access via `--dangerously-skip-permissions` | Write code, run tests, commit changes |
+| Testing (Phase 4) | PM runs tests directly | Coding-agent only receives targeted fix prompts |
+
+**Why `--dangerously-skip-permissions`?** Claude Code requires this flag for non-interactive (background) execution where no TTY is available for permission prompts. This is the standard approach for any Claude Code automation or CI/CD integration.
+
+**Why `tools.fs.workspaceOnly = false`?** Each task runs in an isolated git worktree at `~/.worktrees/<task>/`, which is outside the OpenClaw workspace directory. The agent needs filesystem access to these worktree paths.
+
+**Additional guardrails:**
+- Supervisor Protocol (`references/supervisor-prompt.md`) requires the coding-agent to ask before deleting files or modifying credentials
+- PM scans coding-agent output for dangerous patterns (`rm -rf`, `DROP TABLE`, `chmod 777`, `--force`, `--no-verify`, credential file modifications)
+- Human-in-the-loop: plan approval gate before execution begins, decision escalation during execution
+- Skill is user-invocable only — only runs when you explicitly send `/dev <request>`
 
 **Recommendation**: Review the Supervisor Protocol in `references/supervisor-prompt.md` before use. Run on non-production codebases first.
 

@@ -4,8 +4,8 @@ description: >
   Your AI project manager. Delegates coding tasks to Claude Code running in the
   background — reviews plans, gates approval, monitors progress, validates with
   3-layer testing, and reports results. You stay in chat; it handles the engineering loop.
-version: 0.4.0
-metadata: {"openclaw": {"emoji": "🧑‍💼", "requires": {"bins": ["git", "claude"]}, "os": ["linux", "darwin"]}}
+version: 0.4.1
+metadata: {"openclaw": {"emoji": "📋", "requires": {"bins": ["git", "claude"]}, "os": ["linux", "darwin"]}}
 ---
 
 # Coding PM
@@ -167,6 +167,7 @@ command: claude -p "User feedback on your plan: <user's exact words>. Update acc
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "Execute the approved plan. Follow the Supervisor Protocol. Emit [CHECKPOINT] after each sub-task." \
+  --output-format json \
   --dangerously-skip-permissions \
   --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
@@ -351,6 +352,28 @@ When reporting, prefix with task name so the user can distinguish:
 [$TASK1] Checkpoint: implemented authentication middleware
 [$TASK2] Plan ready for review (see above)
 ```
+
+---
+
+## Security Model
+
+coding-pm uses a 3-tier permission model to minimize risk at each phase:
+
+| Phase | Tools Available | Rationale |
+|-------|----------------|-----------|
+| Phase 1-2 (Planning) | Read-only: `Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git log/diff/show/status/branch)` | Agent only researches and plans — no file writes, no code execution |
+| Phase 3 (Execution) | Full access via `--dangerously-skip-permissions` | Agent writes code, runs builds/tests, commits — requires full tooling |
+| Phase 4 (Testing) | PM runs tests directly; agent only receives targeted fix prompts | Validation is independent of the coding agent |
+
+**Why `--dangerously-skip-permissions`?** Claude Code requires it for non-interactive (background) execution — there is no TTY for permission prompts. This is the same as running `claude` in any CI/CD or automation pipeline.
+
+**Why `tools.fs.workspaceOnly = false`?** Git worktrees are created at `~/.worktrees/<task>/`, outside the OpenClaw workspace. The agent needs filesystem access to these paths.
+
+**Additional guardrails:**
+- Supervisor Protocol (`references/supervisor-prompt.md`) requires the coding-agent to ask before deleting files or modifying credentials
+- PM scans coding-agent output for dangerous patterns (`rm -rf`, `DROP TABLE`, `chmod 777`, `--force`, `--no-verify`, credential files)
+- Human-in-the-loop: plan approval gate before execution, decision escalation during execution
+- Skill is user-invocable only (not `always: true`) — only runs on explicit `/dev` command
 
 ---
 
