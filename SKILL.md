@@ -1,9 +1,9 @@
 ---
 name: coding-pm
 description: >
-  PM/QA skill for coding agents. Reviews plans, gates approval, validates tests,
-  and reports structured results. Use for /dev requests that need oversight.
-  Complements coding-agent: agent executes, PM manages.
+  Your AI project manager. Delegates coding tasks to Claude Code running in the
+  background — reviews plans, gates approval, monitors progress, validates with
+  3-layer testing, and reports results. You stay in chat; it handles the engineering loop.
 version: 0.4.0
 metadata: {"openclaw": {"emoji": "🧑‍💼", "requires": {"bins": ["git", "claude"]}, "os": ["linux", "darwin"]}}
 ---
