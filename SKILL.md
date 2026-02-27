@@ -4,7 +4,7 @@ description: >
   Your AI project manager. Delegates coding tasks to Claude Code running in the
   background — reviews plans, gates approval, monitors progress, validates with
   3-layer testing, and reports results. You stay in chat; it handles the engineering loop.
-version: 0.4.3
+version: 0.4.4
 metadata: {"openclaw": {"emoji": "📋", "requires": {"bins": ["git", "claude"]}, "os": ["linux", "darwin"]}}
 ---
 
@@ -56,10 +56,18 @@ Schema — each key is the task name:
     "baseBranch": "main",
     "sessionId": "abc-123",
     "phase": "executing",
-    "createdAt": "2026-02-27T12:00:00Z"
+    "createdAt": "2026-02-27T12:00:00Z",
+    "purpose": "Build a CLI todo app with add/list/complete/delete commands",
+    "progress": "Implemented core commands, working on tests",
+    "todos": ["Add --help flag", "Write unit tests for delete command"]
   }
 }
 ```
+
+Field notes:
+- **purpose**: One-line summary of what this task delivers. Set in Phase 1, never changes.
+- **progress**: Current status in plain language. Update at each phase transition and on meaningful checkpoints.
+- **todos**: Remaining items for this task. Empty list `[]` when nothing is pending. Update as items are completed or discovered.
 
 **Read/write:** Use OpenClaw's file tools directly — read the file, parse the JSON in-context, write the updated JSON back. No external dependencies needed (the PM is an LLM and handles JSON natively).
 
@@ -68,12 +76,20 @@ Schema — each key is the task name:
 - **Initialize**: Use `bash` only for `mkdir -p ~/.coding-pm` on first use
 
 **When to update:**
-- Phase 1 (preprocessing): create entry with projectDir, worktree, branch, baseBranch, phase="planning"
-- Phase 2 (plan approved): update phase="executing", sessionId
-- Phase 3 (execution): update phase on checkpoints if needed
-- Phase 4 (testing): update phase="testing"
+- Phase 1 (preprocessing): create entry with projectDir, worktree, branch, baseBranch, phase="planning", purpose, progress="Planning started", todos=[]
+- Phase 2 (plan approved): update phase="executing", sessionId, progress, todos (from plan)
+- Phase 3 (execution): update progress and todos on checkpoints
+- Phase 4 (testing): update phase="testing", progress="Running acceptance tests", clear completed todos
 - Phase 5 (merge): remove entry after cleanup
 - `/task cancel`: remove entry after cleanup
+
+### Task cleanup
+
+On `/task list` or session startup, check for stale entries:
+- **Completed**: phase="merged" or worktree no longer exists → ask user: "Task **X** appears finished. Remove from registry?"
+- **Inactive**: no phase change and no new commits for >24h → ask user: "Task **X** has been inactive. Remove or resume?"
+
+Never auto-remove — always confirm with the user first.
 
 ---
 
@@ -441,9 +457,9 @@ This skill requires two platform-level changes to function:
 
 ## Task Commands
 
-`/task list` — Read `~/.coding-pm/tasks.json`. Cross-check with `process action:list` + `git worktree list`. Show each task's name, project, phase, and status.
+`/task list` — Read `~/.coding-pm/tasks.json`. Cross-check with `process action:list` + `git worktree list`. Show each task's name, purpose, phase, and progress. Flag stale/finished tasks for cleanup (see Task cleanup above).
 
-`/task status <name>` — Read task from registry, poll + read log. Show full details including project dir and recent checkpoints.
+`/task status <name>` — Read task from registry, poll + read log. Show full details: purpose, progress, remaining todos, project dir, and recent checkpoints.
 
 `/task cancel <name>` — Kill coding-agent process via `process action:kill id:<sessionId>`. Clean up worktree and remove from registry:
 ```bash
