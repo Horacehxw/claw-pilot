@@ -4,7 +4,7 @@ description: >
   Your AI project manager. Delegates coding tasks to Claude Code running in the
   background — reviews plans, gates approval, monitors progress, validates with
   3-layer testing, and reports results. You stay in chat; it handles the engineering loop.
-version: 0.4.1
+version: 0.4.2
 metadata: {"openclaw": {"emoji": "📋", "requires": {"bins": ["git", "claude"]}, "os": ["linux", "darwin"]}}
 ---
 
@@ -204,6 +204,7 @@ When the coding-agent emits `[DECISION_NEEDED] <question>`:
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "The user answered your question: <user's answer>. Continue with the plan." \
+  --output-format json \
   --dangerously-skip-permissions \
   --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
@@ -218,6 +219,7 @@ When coding-agent reports `[ERROR]`:
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "Error encountered: <error description>. Please investigate and fix." \
+  --output-format json \
   --dangerously-skip-permissions \
   --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
@@ -281,6 +283,7 @@ Send failure output to coding-agent for fixing. Retry up to 3 rounds:
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "Tests failed. Fix these issues: <test output>" \
+  --output-format json \
   --dangerously-skip-permissions \
   --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
@@ -359,21 +362,27 @@ When reporting, prefix with task name so the user can distinguish:
 
 coding-pm uses a 3-tier permission model to minimize risk at each phase:
 
-| Phase | Tools Available | Rationale |
-|-------|----------------|-----------|
-| Phase 1-2 (Planning) | Read-only: `Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git log/diff/show/status/branch)` | Agent only researches and plans — no file writes, no code execution |
-| Phase 3 (Execution) | Full access via `--dangerously-skip-permissions` | Agent writes code, runs builds/tests, commits — requires full tooling |
-| Phase 4 (Testing) | PM runs tests directly; agent only receives targeted fix prompts | Validation is independent of the coding agent |
+| Phase | Tools Available | Network | Rationale |
+|-------|----------------|---------|-----------|
+| Phase 1-2 (Planning) | Read-only: `Read,Glob,Grep,LS,WebSearch,WebFetch,Bash(git log/diff/show/status/branch)` | Outbound only (WebSearch/WebFetch for researching libraries and best practices) | Agent only researches and plans — no file writes, no code execution |
+| Phase 3 (Execution) | Full access via `--dangerously-skip-permissions` | As needed (package installs, API docs) | Agent writes code, runs builds/tests, commits — requires full tooling |
+| Phase 4 (Testing) | PM runs tests directly; agent only receives targeted fix prompts | None | Validation is independent of the coding agent |
 
-**Why `--dangerously-skip-permissions`?** Claude Code requires it for non-interactive (background) execution — there is no TTY for permission prompts. This is the same as running `claude` in any CI/CD or automation pipeline.
+### Platform configuration requirements
 
-**Why `tools.fs.workspaceOnly = false`?** Git worktrees are created at `~/.worktrees/<task>/`, outside the OpenClaw workspace. The agent needs filesystem access to these paths.
+This skill requires two platform-level changes to function:
 
-**Additional guardrails:**
-- Supervisor Protocol (`references/supervisor-prompt.md`) requires the coding-agent to ask before deleting files or modifying credentials
-- PM scans coding-agent output for dangerous patterns (`rm -rf`, `DROP TABLE`, `chmod 777`, `--force`, `--no-verify`, credential files)
-- Human-in-the-loop: plan approval gate before execution, decision escalation during execution
-- Skill is user-invocable only (not `always: true`) — only runs on explicit `/dev` command
+1. **`tools.fs.workspaceOnly = false`** — Git worktrees are created at `~/.worktrees/<task>/`, outside the OpenClaw workspace. Without this setting, the agent cannot read/write worktree files. This is a session-level OpenClaw config change; re-enable it when not using coding-pm on sensitive systems.
+
+2. **`--dangerously-skip-permissions`** — Claude Code requires this flag for non-interactive (background) execution where no TTY is available for permission prompts. This is the standard approach for any Claude Code automation (CI/CD, scripts, background agents). All `claude` invocations also use `--output-format json` for structured, parseable output. **Note:** `--dangerously-skip-permissions` may override `--allowedTools` restrictions — the planning phase tool restriction is a best-effort guardrail, not a hard sandbox. The Supervisor Protocol and PM monitoring provide additional enforcement.
+
+### Guardrails
+
+- **Supervisor Protocol** (`references/supervisor-prompt.md`): The coding-agent must ask before deleting files, modifying credentials, or running destructive commands
+- **Dangerous pattern scanning**: PM monitors coding-agent output for `rm -rf`, `DROP TABLE`, `chmod 777`, `--force`, `--no-verify`, credential file modifications — alerts user immediately
+- **Human-in-the-loop**: Plan approval gate before execution begins; `[DECISION_NEEDED]` escalation during execution
+- **User-invocable only**: Not `always: true` — only runs on explicit `/dev` command
+- **Error budget**: Auto-retry up to 3 rounds, then escalate to user — prevents runaway loops
 
 ---
 

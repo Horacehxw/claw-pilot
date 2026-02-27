@@ -44,3 +44,53 @@ clawdhub publish . --slug coding-pm --name "Coding PM" --version X.Y.Z --changel
 - OpenClaw 2026.2.19+, git 2.20+
 - Claude Code 2.1.0+
 - `tools.fs.workspaceOnly = false` in OpenClaw config (worktree paths are outside workspace)
+
+
+## Integration Testing
+
+Before publishing a new version, validate the full workflow end-to-end.
+
+### End-to-end test: Texas Holdem game
+
+Validates that coding-pm can manage a complete development lifecycle:
+
+1. **Setup**: Create an empty project with `git init`
+2. **Invoke**: `/dev "Build a Texas Holdem poker game for 2-8 players with a web GUI. Use HTML/CSS/JS with a Node.js backend. Include game logic (dealing, betting rounds, hand evaluation), a responsive web interface showing player hands and community cards, and WebSocket-based multiplayer."`
+3. **Verify each phase**:
+   - Phase 1: Worktree created at `~/.worktrees/texas-holdem/`, coding-agent starts planning
+   - Phase 2: Plan includes game logic, UI components, WebSocket server, test strategy — PM reviews and presents
+   - Phase 3: Coding-agent executes, PM monitors checkpoints and dangerous patterns
+   - Phase 4: Automated tests pass, dev server starts, UI renders correctly (screenshot if available)
+   - Phase 5: Merge and cleanup succeed — no worktree/branch artifacts remain
+4. **Success criteria**:
+   - Game runs at `localhost:3000` (or similar)
+   - 2-8 players can join and play
+   - Cards deal correctly, betting rounds work, hand evaluation is accurate
+   - Web UI shows player hands, community cards, pot, and game state
+
+### Smoke test: Claude CLI flags
+
+Quick validation that coding-pm's CLI invocations work correctly:
+
+```bash
+# Planning phase — read-only tools should work
+claude -p "List files in this directory" \
+  --output-format json \
+  --dangerously-skip-permissions \
+  --allowedTools "Read,Glob,Grep,LS,Bash(git log *,git diff *)"
+
+# Planning phase — write tools should be blocked
+claude -p "Create a file called test.txt" \
+  --output-format json \
+  --dangerously-skip-permissions \
+  --allowedTools "Read,Glob,Grep,LS"
+# Agent should not be able to create files (no Write tool)
+```
+
+### Subagent test approach
+
+For CI or automated validation, launch a Claude Code subagent as coding-pm:
+- `claude -p "<task prompt>" --append-system-prompt-file SKILL.md` to simulate PM role
+- Have it manage another claude instance as the coding-agent
+- Verify the full 5-phase workflow completes
+- Tests prompt quality and workflow logic end-to-end

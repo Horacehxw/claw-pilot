@@ -60,7 +60,7 @@ coding-pm uses a **3-tier permission model** to minimize risk at each phase:
 
 | Phase | Permissions | What the agent can do |
 |-------|------------|----------------------|
-| Planning (Phase 1-2) | Read-only tools via `--allowedTools` | Research codebase, read files, search — no writes |
+| Planning (Phase 1-2) | Read-only tools via `--allowedTools` (best-effort) | Research codebase, read files, search — writes restricted but not sandboxed |
 | Execution (Phase 3) | Full access via `--dangerously-skip-permissions` | Write code, run tests, commit changes |
 | Testing (Phase 4) | PM runs tests directly | Coding-agent only receives targeted fix prompts |
 
