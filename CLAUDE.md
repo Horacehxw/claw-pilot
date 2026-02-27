@@ -45,6 +45,13 @@ clawdhub publish . --slug coding-pm --name "Coding PM" --version X.Y.Z --changel
 - Claude Code 2.1.0+
 - `tools.fs.workspaceOnly = false` in OpenClaw config (worktree paths are outside workspace)
 
+## Critical Technical Decisions
+
+### `--output-format json` usage: planning only, NOT execution
+
+- **Phase 1-2 (planning) commands: USE `--output-format json`** — PM waits for the final result (plan text + sessionId). Structured JSON output is ideal.
+- **Phase 3 (execution) and Phase 4 (fix) commands: DO NOT use `--output-format json`** — PM monitors the coding-agent in real-time via `process action:log`, parsing streaming output for markers (`[CHECKPOINT]`, `[DONE]`, `[ERROR]`, `[DECISION_NEEDED]`). With `--output-format json`, Claude buffers all output and only emits a single JSON blob at the end, making real-time monitoring impossible.
+
 
 ## Integration Testing
 

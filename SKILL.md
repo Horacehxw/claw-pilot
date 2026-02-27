@@ -4,7 +4,7 @@ description: >
   Your AI project manager. Delegates coding tasks to Claude Code running in the
   background — reviews plans, gates approval, monitors progress, validates with
   3-layer testing, and reports results. You stay in chat; it handles the engineering loop.
-version: 0.4.2
+version: 0.4.3
 metadata: {"openclaw": {"emoji": "📋", "requires": {"bins": ["git", "claude"]}, "os": ["linux", "darwin"]}}
 ---
 
@@ -167,7 +167,6 @@ command: claude -p "User feedback on your plan: <user's exact words>. Update acc
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "Execute the approved plan. Follow the Supervisor Protocol. Emit [CHECKPOINT] after each sub-task." \
-  --output-format json \
   --dangerously-skip-permissions \
   --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
@@ -204,7 +203,6 @@ When the coding-agent emits `[DECISION_NEEDED] <question>`:
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "The user answered your question: <user's answer>. Continue with the plan." \
-  --output-format json \
   --dangerously-skip-permissions \
   --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
@@ -219,7 +217,6 @@ When coding-agent reports `[ERROR]`:
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "Error encountered: <error description>. Please investigate and fix." \
-  --output-format json \
   --dangerously-skip-permissions \
   --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
@@ -283,7 +280,6 @@ Send failure output to coding-agent for fixing. Retry up to 3 rounds:
 ```
 bash pty:true workdir:~/.worktrees/$TASK background:true
 command: claude -p "Tests failed. Fix these issues: <test output>" \
-  --output-format json \
   --dangerously-skip-permissions \
   --append-system-prompt-file "$SUPERVISOR_PROMPT" \
   --resume <sessionId>
@@ -374,7 +370,7 @@ This skill requires two platform-level changes to function:
 
 1. **`tools.fs.workspaceOnly = false`** — Git worktrees are created at `~/.worktrees/<task>/`, outside the OpenClaw workspace. Without this setting, the agent cannot read/write worktree files. This is a session-level OpenClaw config change; re-enable it when not using coding-pm on sensitive systems.
 
-2. **`--dangerously-skip-permissions`** — Claude Code requires this flag for non-interactive (background) execution where no TTY is available for permission prompts. This is the standard approach for any Claude Code automation (CI/CD, scripts, background agents). All `claude` invocations also use `--output-format json` for structured, parseable output. **Note:** `--dangerously-skip-permissions` may override `--allowedTools` restrictions — the planning phase tool restriction is a best-effort guardrail, not a hard sandbox. The Supervisor Protocol and PM monitoring provide additional enforcement.
+2. **`--dangerously-skip-permissions`** — Claude Code requires this flag for non-interactive (background) execution where no TTY is available for permission prompts. This is the standard approach for any Claude Code automation (CI/CD, scripts, background agents). Planning phase commands use `--output-format json` for structured results; execution/fix commands omit it so the PM can read streaming output via `process action:log` for real-time marker detection (`[CHECKPOINT]`, `[DONE]`, `[ERROR]`). **Note:** `--dangerously-skip-permissions` may override `--allowedTools` restrictions — the planning phase tool restriction is a best-effort guardrail, not a hard sandbox. The Supervisor Protocol and PM monitoring provide additional enforcement.
 
 ### Guardrails
 
